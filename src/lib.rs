@@ -8,9 +8,10 @@ use std::{
     io::Write,
 };
 
+pub use crossterm::event;
+
 use crossterm::{
     cursor,
-    event::{Event, EventStream, KeyCode, KeyEventKind},
     terminal::{EnterAlternateScreen, LeaveAlternateScreen},
 };
 use futures::{FutureExt, StreamExt};
@@ -49,7 +50,7 @@ pub trait App {
     ///
     /// This function is called for every event. It maps the event
     /// to an (optional) message which may be handled by the application.
-    fn handle_event(&self, event: Event) -> Option<Message<Self::AppMessage>>;
+    fn handle_event(&self, event: event::Event) -> Option<Message<Self::AppMessage>>;
 
     /// Handle messages.
     ///
@@ -155,7 +156,7 @@ where
     }
 
     pub async fn event_loop<A: App<AppMessage = M>>(&mut self, mut app: A) -> Result<(), M> {
-        let mut reader = EventStream::new();
+        let mut reader = event::EventStream::new();
 
         self.enter()?;
         self.draw(&app)?;
@@ -205,15 +206,15 @@ where
               maybe_event = reader.next().fuse() => {
                 if let Some(Ok(event)) = maybe_event {
                     match event {
-                      Event::Key(key) if key.kind == KeyEventKind::Press => {
+                      event::Event::Key(key) if key.kind == event::KeyEventKind::Press => {
                         match key.code {
-                          KeyCode::Char('z') if key.modifiers.contains(crossterm::event::KeyModifiers::CONTROL) => {
+                          event::KeyCode::Char('z') if key.modifiers.contains(event::KeyModifiers::CONTROL) => {
                             self.tx.send(Message::Suspend)?;
                           },
-                          KeyCode::Char('c') if key.modifiers.contains(crossterm::event::KeyModifiers::CONTROL) => {
+                          event::KeyCode::Char('c') if key.modifiers.contains(event::KeyModifiers::CONTROL) => {
                             self.tx.send(Message::Quit)?;
                           },
-                          KeyCode::Char('r') if key.modifiers.contains(crossterm::event::KeyModifiers::CONTROL) => {
+                          event::KeyCode::Char('r') if key.modifiers.contains(event::KeyModifiers::CONTROL) => {
                             self.tx.send(Message::Refresh)?;
                           },
                           _ => { if let Some(message) = app.handle_event(event) {

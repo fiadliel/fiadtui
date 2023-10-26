@@ -1,7 +1,9 @@
 use std::{future::Future, io::stdout, pin::Pin, time::Duration};
 
-use crossterm::event::{KeyCode, KeyEvent, KeyEventKind};
-use fiadtui::{App, EventLoop, Message};
+use fiadtui::{
+    event::{Event, KeyCode, KeyEvent, KeyEventKind},
+    App, EventLoop, Message,
+};
 use ratatui::widgets::Paragraph;
 
 #[derive(Debug)]
@@ -24,14 +26,14 @@ impl App for CounterApp {
         frame.render_widget(Paragraph::new(self.counter.to_string()), frame.size());
     }
 
-    fn handle_event(&self, event: crossterm::event::Event) -> Option<Message<CounterMessage>> {
+    fn handle_event(&self, event: Event) -> Option<Message<CounterMessage>> {
         match event {
-            crossterm::event::Event::Key(KeyEvent {
+            Event::Key(KeyEvent {
                 code: KeyCode::Char('+'),
                 kind: KeyEventKind::Press,
                 ..
             }) => Some(CounterMessage::Increment.into()),
-            crossterm::event::Event::Key(KeyEvent {
+            Event::Key(KeyEvent {
                 code: KeyCode::Char('-'),
                 kind: KeyEventKind::Press,
                 ..
