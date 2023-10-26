@@ -1,0 +1,19 @@
+[package]
+name = "fiadtui"
+version = "0.1.0"
+edition = "2021"
+license = "BSD-2-Clause-Patent"
+description = "Simple TUI event loop for ratatui with tokio and crossterm"
+authors = ["Gary Coady <gary@lyranthe.org>"]
+repository = "https://github.com/fiadliel/fiadtui"
+categories = ["command-line-interface"]
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+crossterm = { version = "0.27.0", features = ["event-stream"] }
+futures = "0.3.28"
+ratatui = "0.24.0"
+signal-hook = { version = "0.3.17", default-features = false }
+thiserror = "1.0.50"
+tokio = { version = "1.33.0", features = ["sync", "rt", "macros"] }
