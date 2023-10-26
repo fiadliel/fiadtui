@@ -1,4 +1,4 @@
-[![Docs](https://img.shields.io/badge/crates.io-0.4.0-red)](https://crates.io/crates/fiadtui)
+[![Docs](https://img.shields.io/badge/crates.io-0.5.0-red)](https://crates.io/crates/fiadtui)
  [![Docs](https://img.shields.io/badge/docs.rs-blue)](https://docs.rs/fiadtui/latest/fiadtui/)
 
 # fiadtui
