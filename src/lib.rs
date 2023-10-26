@@ -78,7 +78,11 @@ impl<M> From<M> for Message<M> {
 }
 
 #[derive(Debug)]
-pub struct EventLoop<M, IO: Write> {
+pub struct EventLoop<M, IO>
+where
+    M: Send + Sync + 'static,
+    IO: Write,
+{
     terminal: Terminal<CrosstermBackend<IO>>,
     should_quit: bool,
     should_suspend: bool,
@@ -130,7 +134,7 @@ where
         Ok(())
     }
 
-    fn exit(&mut self) -> Result<(), M> {
+    pub(self) fn exit(&mut self) -> Result<(), M> {
         crossterm::terminal::disable_raw_mode()?;
         crossterm::execute!(
             self.terminal.backend_mut(),
@@ -238,5 +242,15 @@ where
         self.exit()?;
 
         Ok(())
+    }
+}
+
+impl<M, IO> Drop for EventLoop<M, IO>
+where
+    M: Send + Sync + 'static,
+    IO: Write,
+{
+    fn drop(&mut self) {
+        let _ = self.exit();
     }
 }
