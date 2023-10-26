@@ -34,7 +34,9 @@ pub enum Error<M> {
 type Result<A, M> = std::result::Result<A, Error<M>>;
 
 /// Application behavior.
-pub trait App<M> {
+pub trait App {
+    type AppMessage;
+
     /// After every message, this function is called to draw the UI.
     ///
     /// As Ratatui is an immediate mode library, this very simply
@@ -47,7 +49,7 @@ pub trait App<M> {
     ///
     /// This function is called for every event. It maps the event
     /// to an (optional) message which may be handled by the application.
-    fn handle_event(&self, event: Event) -> Option<Message<M>>;
+    fn handle_event(&self, event: Event) -> Option<Message<Self::AppMessage>>;
 
     /// Handle messages.
     ///
@@ -56,8 +58,8 @@ pub trait App<M> {
     /// which will return a message in the future.
     fn handle_message(
         &mut self,
-        message: M,
-    ) -> Option<impl Future<Output = Message<M>> + Send + 'static>;
+        message: Self::AppMessage,
+    ) -> Option<impl Future<Output = Message<Self::AppMessage>> + Send + 'static>;
 }
 
 pub enum SystemMessage {
@@ -144,12 +146,12 @@ where
         }
     }
 
-    fn draw<A: App<M>>(&mut self, app: &A) -> Result<CompletedFrame, M> {
+    fn draw<A: App<AppMessage = M>>(&mut self, app: &A) -> Result<CompletedFrame, M> {
         let result = self.terminal.draw(|t| app.draw(t))?;
         Ok(result)
     }
 
-    pub async fn event_loop<A: App<M>>(&mut self, mut app: A) -> Result<(), M> {
+    pub async fn event_loop<A: App<AppMessage = M>>(&mut self, mut app: A) -> Result<(), M> {
         let mut reader = EventStream::new();
 
         self.enter()?;
@@ -183,16 +185,16 @@ where
                       self.draw(&app)?;
                     },
                     Message::System(SystemMessage::Suspend) => {
-                            self.should_suspend = true;
-                        },
-                        Message::App(m) => {
-                            if let Some(fut) = app.handle_message(m) {
-                              self.joinset.spawn(fut);
-                            }
+                      self.should_suspend = true;
+                    },
+                    Message::App(m) => {
+                      if let Some(fut) = app.handle_message(m) {
+                        self.joinset.spawn(fut);
+                      }
 
-                            self.draw(&app)?;
-                        }
+                      self.draw(&app)?;
                     }
+                  }
                 } else {
                   break;
                 }
