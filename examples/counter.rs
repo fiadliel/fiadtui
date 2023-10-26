@@ -28,12 +28,12 @@ impl App for CounterApp {
                 code: KeyCode::Char('+'),
                 kind: KeyEventKind::Press,
                 ..
-            }) => Some(Message::App(CounterMessage::Increment)),
+            }) => Some(CounterMessage::Increment.into()),
             crossterm::event::Event::Key(KeyEvent {
                 code: KeyCode::Char('-'),
                 kind: KeyEventKind::Press,
                 ..
-            }) => Some(Message::App(CounterMessage::Decrement)),
+            }) => Some(CounterMessage::Decrement.into()),
             _ => None,
         }
     }

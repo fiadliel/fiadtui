@@ -30,12 +30,12 @@ impl App for CounterApp {
                 code: KeyCode::Char('+'),
                 kind: KeyEventKind::Press,
                 ..
-            }) => Some(Message::App(CounterMessage::Increment)),
+            }) => Some(CounterMessage::Increment.into()),
             crossterm::event::Event::Key(KeyEvent {
                 code: KeyCode::Char('-'),
                 kind: KeyEventKind::Press,
                 ..
-            }) => Some(Message::App(CounterMessage::Decrement)),
+            }) => Some(CounterMessage::Decrement.into()),
             _ => None,
         }
     }
@@ -56,7 +56,7 @@ impl App for CounterApp {
                 self.pending_update = true;
                 Some(Box::pin(async move {
                     let _ = tokio::time::sleep(Duration::from_secs(1)).await;
-                    Message::App(CounterMessage::DelayedUpdate(future_value))
+                    CounterMessage::DelayedUpdate(future_value).into()
                 }))
             }
             CounterMessage::Decrement => {
@@ -68,7 +68,7 @@ impl App for CounterApp {
                 self.pending_update = true;
                 Some(Box::pin(async move {
                     let _ = tokio::time::sleep(Duration::from_secs(1)).await;
-                    Message::App(CounterMessage::DelayedUpdate(future_value))
+                    CounterMessage::DelayedUpdate(future_value).into()
                 }))
             }
             CounterMessage::DelayedUpdate(v) => {

@@ -62,15 +62,18 @@ pub trait App {
     ) -> Option<impl Future<Output = Message<Self::AppMessage>> + Send + 'static>;
 }
 
-pub enum SystemMessage {
+#[non_exhaustive]
+pub enum Message<M> {
     Quit,
     Refresh,
     Suspend,
+    App(M),
 }
 
-pub enum Message<M> {
-    System(SystemMessage),
-    App(M),
+impl<M> From<M> for Message<M> {
+    fn from(value: M) -> Self {
+        Message::App(value)
+    }
 }
 
 #[derive(Debug)]
@@ -177,14 +180,14 @@ where
               maybe_message = self.rx.recv().fuse() => {
                 if let Some(message) = maybe_message {
                     match message {
-                      Message::System(SystemMessage::Quit) => {
+                      Message::Quit => {
                         self.should_quit = true;
                     },
-                    Message::System(SystemMessage::Refresh) => {
+                    Message::Refresh => {
                       self.terminal.clear()?;
                       self.draw(&app)?;
                     },
-                    Message::System(SystemMessage::Suspend) => {
+                    Message::Suspend => {
                       self.should_suspend = true;
                     },
                     Message::App(m) => {
@@ -205,13 +208,13 @@ where
                       Event::Key(key) if key.kind == KeyEventKind::Press => {
                         match key.code {
                           KeyCode::Char('z') if key.modifiers.contains(crossterm::event::KeyModifiers::CONTROL) => {
-                            self.tx.send(Message::System(SystemMessage::Suspend))?;
+                            self.tx.send(Message::Suspend)?;
                           },
                           KeyCode::Char('c') if key.modifiers.contains(crossterm::event::KeyModifiers::CONTROL) => {
-                            self.tx.send(Message::System(SystemMessage::Quit))?;
+                            self.tx.send(Message::Quit)?;
                           },
                           KeyCode::Char('r') if key.modifiers.contains(crossterm::event::KeyModifiers::CONTROL) => {
-                            self.tx.send(Message::System(SystemMessage::Refresh))?;
+                            self.tx.send(Message::Refresh)?;
                           },
                           _ => { if let Some(message) = app.handle_event(event) {
                             self.tx.send(message)?;
