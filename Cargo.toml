@@ -1,6 +1,6 @@
 [package]
 name = "fiadtui"
-version = "0.5.0"
+version = "0.6.0"
 edition = "2021"
 license = "BSD-2-Clause-Patent"
 description = "Simple TUI event loop for ratatui with tokio and crossterm"
