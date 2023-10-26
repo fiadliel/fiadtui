@@ -44,7 +44,7 @@ pub trait App {
     /// renders the whole UI on each call.
     ///
     /// The state is expected to be stored in the [`App`] implementation.
-    fn draw(&self, frame: &mut Frame);
+    fn draw(&mut self, frame: &mut Frame);
 
     /// Handle events.
     ///
@@ -154,7 +154,7 @@ where
         }
     }
 
-    fn draw<A: App<AppMessage = M>>(&mut self, app: &A) -> Result<CompletedFrame, M> {
+    fn draw<A: App<AppMessage = M>>(&mut self, app: &mut A) -> Result<CompletedFrame, M> {
         let result = self.terminal.draw(|t| app.draw(t))?;
         Ok(result)
     }
@@ -163,7 +163,7 @@ where
         let mut reader = event::EventStream::new();
 
         self.enter()?;
-        self.draw(&app)?;
+        self.draw(&mut app)?;
 
         loop {
             if self.should_quit {
@@ -173,7 +173,7 @@ where
             if self.should_suspend {
                 self.suspend()?;
                 self.resume()?;
-                self.draw(&app)?;
+                self.draw(&mut app)?;
             }
 
             select! {
@@ -190,7 +190,7 @@ where
                     },
                     Message::Refresh => {
                       self.terminal.clear()?;
-                      self.draw(&app)?;
+                      self.draw(&mut app)?;
                     },
                     Message::Suspend => {
                       self.should_suspend = true;
@@ -200,7 +200,7 @@ where
                         self.joinset.spawn(fut);
                       }
 
-                      self.draw(&app)?;
+                      self.draw(&mut app)?;
                     }
                   }
                 } else {
