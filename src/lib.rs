@@ -1,5 +1,3 @@
-#![feature(return_position_impl_trait_in_trait)]
-
 //! Simple async TUI wrapper based on ratatui, crossterm & tokio.
 //!
 //! This library provides a very simple event loop around ratatui's
@@ -16,7 +14,7 @@ use crossterm::{
     terminal::{EnterAlternateScreen, LeaveAlternateScreen},
 };
 use futures::{FutureExt, StreamExt};
-use ratatui::{prelude::CrosstermBackend, Frame, Terminal};
+use ratatui::{prelude::CrosstermBackend, CompletedFrame, Frame, Terminal};
 use thiserror::Error as ThisError;
 use tokio::{
     select,
@@ -146,12 +144,16 @@ where
         }
     }
 
+    fn draw<A: App<M>>(&mut self, app: &A) -> Result<CompletedFrame, M> {
+        let result = self.terminal.draw(|t| app.draw(t))?;
+        Ok(result)
+    }
+
     pub async fn event_loop<A: App<M>>(&mut self, mut app: A) -> Result<(), M> {
         let mut reader = EventStream::new();
 
         self.enter()?;
-
-        self.terminal.draw(|t| app.draw(t))?;
+        self.draw(&app)?;
 
         loop {
             if self.should_quit {
@@ -161,6 +163,7 @@ where
             if self.should_suspend {
                 self.suspend()?;
                 self.resume()?;
+                self.draw(&app)?;
             }
 
             select! {
@@ -177,6 +180,7 @@ where
                     },
                     Message::System(SystemMessage::Refresh) => {
                       self.terminal.clear()?;
+                      self.draw(&app)?;
                     },
                     Message::System(SystemMessage::Suspend) => {
                             self.should_suspend = true;
@@ -185,7 +189,8 @@ where
                             if let Some(fut) = app.handle_message(m) {
                               self.joinset.spawn(fut);
                             }
-                            self.terminal.draw(|t| app.draw(t))?;
+
+                            self.draw(&app)?;
                         }
                     }
                 } else {
