@@ -6,8 +6,24 @@ Simple TUI wrapper for ratatui with tokio and crossterm.
 
 ### Counter application
 
+The classic counter (press `+` to increment, `-` to decrement).
+
 [Link](examples/counter.rs)
 
 ```bash
 cargo run --example counter
+```
+
+### Delayed counter application
+
+Demonstrates the use of asynchronous message handlers.
+
+Similar to the counter application, but updates the counter value
+asynchronously after 1 second. Further updates are dropped while
+any existing update is pending.
+
+[Link](examples/delayed_counter.rs)
+
+```bash
+cargo run --example delayed_counter --features="tokio/time"
 ```
