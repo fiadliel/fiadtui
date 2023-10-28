@@ -22,7 +22,7 @@ struct CounterApp {
 impl App for CounterApp {
     type AppMessage = CounterMessage;
 
-    fn draw(&self, frame: &mut ratatui::Frame) {
+    fn draw(&mut self, frame: &mut ratatui::Frame) {
         frame.render_widget(Paragraph::new(self.counter.to_string()), frame.size());
     }
 
