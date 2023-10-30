@@ -30,3 +30,15 @@ any existing update is pending.
 ```bash
 cargo run --example delayed_counter
 ```
+
+### External tick application
+
+Demonstrates the use of a channel created externally.
+
+A `Tick` message is sent every 500ms to the app, from external code.
+
+[Link](examples/tick.rs)
+
+```bash
+cargo run --example tick
+```

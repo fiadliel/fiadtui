@@ -20,7 +20,7 @@ use ratatui::{prelude::CrosstermBackend, CompletedFrame, Frame, Terminal};
 use thiserror::Error as ThisError;
 use tokio::{
     select,
-    sync::mpsc::{error::SendError, unbounded_channel, UnboundedReceiver, UnboundedSender},
+    sync::mpsc::{channel, error::SendError, Receiver, Sender},
     task::{JoinError, JoinSet},
     time::Instant,
 };
@@ -88,8 +88,8 @@ where
     terminal: Terminal<CrosstermBackend<IO>>,
     should_quit: bool,
     should_suspend: bool,
-    tx: UnboundedSender<Message<M>>,
-    rx: UnboundedReceiver<Message<M>>,
+    tx: Sender<Message<M>>,
+    rx: Receiver<Message<M>>,
     joinset: JoinSet<Message<M>>,
 }
 
@@ -99,15 +99,23 @@ where
     IO: Write,
 {
     pub fn new(io: IO) -> Result<EventLoop<M, IO>, M> {
+        let (tx, rx) = channel(200);
+        Self::with_channel(io, tx, rx)
+    }
+
+    pub fn with_channel(
+        io: IO,
+        sender: Sender<Message<M>>,
+        receiver: Receiver<Message<M>>,
+    ) -> Result<EventLoop<M, IO>, M> {
         let terminal = Terminal::new(CrosstermBackend::new(io))?;
-        let (tx, rx) = unbounded_channel();
         let joinset = JoinSet::new();
         let eventloop = EventLoop {
             terminal,
             should_quit: false,
             should_suspend: false,
-            tx,
-            rx,
+            tx: sender,
+            rx: receiver,
             joinset,
         };
         Ok(eventloop)
@@ -192,7 +200,7 @@ where
             select! {
               maybe_joined = Self::next_fut_message(&mut self.joinset).fuse() => {
                   if let Some(Ok(message)) = maybe_joined {
-                    self.tx.send(message)?;
+                    self.tx.send(message).await?;
                   }
               },
               maybe_message = self.rx.recv().fuse() => {
@@ -246,22 +254,22 @@ where
                       event::Event::Key(key) if key.kind == event::KeyEventKind::Press => {
                         match key.code {
                           event::KeyCode::Char('z') if key.modifiers.contains(event::KeyModifiers::CONTROL) => {
-                            self.tx.send(Message::Suspend)?;
+                            self.tx.send(Message::Suspend).await?;
                           },
                           event::KeyCode::Char('c') if key.modifiers.contains(event::KeyModifiers::CONTROL) => {
-                            self.tx.send(Message::Quit)?;
+                            self.tx.send(Message::Quit).await?;
                           },
                           event::KeyCode::Char('r') if key.modifiers.contains(event::KeyModifiers::CONTROL) => {
-                            self.tx.send(Message::Refresh)?;
+                            self.tx.send(Message::Refresh).await?;
                           },
                           _ => { if let Some(message) = app.handle_event(event) {
-                            self.tx.send(message)?;
+                            self.tx.send(message).await?;
                           }}
                         }
                       },
                       _ => {
                           if let Some(message) = app.handle_event(event) {
-                            self.tx.send(message)?;
+                            self.tx.send(message).await?;
                           }
                       },
                     }
