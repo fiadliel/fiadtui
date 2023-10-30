@@ -3,81 +3,32 @@
 //! This library provides a very simple event loop around ratatui's
 //! abstractions.
 
-use std::{
-    future::{pending, Future},
-    io::Write,
-    time::Duration,
-};
+mod app;
+mod error;
+mod message;
 
-pub use crossterm::event;
+use std::{future::pending, io::Write, time::Duration};
 
 use crossterm::{
     cursor,
     terminal::{EnterAlternateScreen, LeaveAlternateScreen},
 };
 use futures::{FutureExt, StreamExt};
-use ratatui::{prelude::CrosstermBackend, CompletedFrame, Frame, Terminal};
-use thiserror::Error as ThisError;
+use ratatui::{prelude::CrosstermBackend, CompletedFrame, Terminal};
 use tokio::{
     select,
-    sync::mpsc::{channel, error::SendError, Receiver, Sender},
+    sync::mpsc::{channel, Receiver, Sender},
     task::{JoinError, JoinSet},
     time::Instant,
 };
 
-#[derive(ThisError, Debug)]
-pub enum Error<M> {
-    #[error(transparent)]
-    IO(#[from] std::io::Error),
-    #[error(transparent)]
-    Send(#[from] SendError<Message<M>>),
-}
+pub use crate::app::App;
+pub use crate::error::Error;
+pub use crate::message::Message;
+pub use crossterm::event;
 
 /// Type used for results returned by library.
 type Result<A, M> = std::result::Result<A, Error<M>>;
-
-/// Application behavior.
-pub trait App {
-    type AppMessage;
-
-    /// After every message, this function is called to draw the UI.
-    ///
-    /// As Ratatui is an immediate mode library, this very simply
-    /// renders the whole UI on each call.
-    ///
-    /// The state is expected to be stored in the [`App`] implementation.
-    fn draw(&mut self, frame: &mut Frame);
-
-    /// Handle events.
-    ///
-    /// This function is called for every event. It maps the event
-    /// to an (optional) message which may be handled by the application.
-    fn handle_event(&self, event: event::Event) -> Option<Message<Self::AppMessage>>;
-
-    /// Handle messages.
-    ///
-    /// This function is called for every message. It may modify the
-    /// state of the application, and (optionally) returns a future
-    /// which will return a message in the future.
-    fn handle_message(
-        &mut self,
-        message: Self::AppMessage,
-    ) -> Option<impl Future<Output = Message<Self::AppMessage>> + Send + 'static>;
-}
-
-#[non_exhaustive]
-pub enum Message<M> {
-    Quit,
-    Refresh,
-    Suspend,
-    App(M),
-}
-
-impl<M> From<M> for Message<M> {
-    fn from(value: M) -> Self {
-        Message::App(value)
-    }
-}
 
 #[derive(Debug)]
 pub struct EventLoop<M, IO>
