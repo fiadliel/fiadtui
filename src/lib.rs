@@ -6,6 +6,7 @@
 use std::{
     future::{pending, Future},
     io::Write,
+    time::Duration,
 };
 
 pub use crossterm::event;
@@ -21,13 +22,14 @@ use tokio::{
     select,
     sync::mpsc::{error::SendError, unbounded_channel, UnboundedReceiver, UnboundedSender},
     task::{JoinError, JoinSet},
+    time::Instant,
 };
 
 #[derive(ThisError, Debug)]
 pub enum Error<M> {
-    #[error("IO error")]
+    #[error(transparent)]
     IO(#[from] std::io::Error),
-    #[error("Channel send error")]
+    #[error(transparent)]
     Send(#[from] SendError<Message<M>>),
 }
 
@@ -155,15 +157,26 @@ where
     }
 
     fn draw<A: App<AppMessage = M>>(&mut self, app: &mut A) -> Result<CompletedFrame, M> {
-        let result = self.terminal.draw(|t| app.draw(t))?;
+        let result = self.terminal.draw(|frame| app.draw(frame))?;
         Ok(result)
     }
 
-    pub async fn event_loop<A: App<AppMessage = M>>(&mut self, mut app: A) -> Result<(), M> {
+    pub async fn event_loop<A: App<AppMessage = M>>(
+        &mut self,
+        mut app: A,
+        frames_per_second: u8,
+    ) -> Result<(), M> {
+        assert!(frames_per_second > 0, "Refresh rate must be non-zero");
+
         let mut reader = event::EventStream::new();
+        let mut last_render;
+        let mut render_pending = false;
+        let time_between_frames =
+            Duration::from_millis(((frames_per_second as f64).recip() * 1000.0) as u64);
 
         self.enter()?;
         self.draw(&mut app)?;
+        last_render = Instant::now();
 
         loop {
             if self.should_quit {
@@ -191,6 +204,8 @@ where
                     Message::Refresh => {
                       self.terminal.clear()?;
                       self.draw(&mut app)?;
+                      render_pending = false;
+                      last_render = Instant::now();
                     },
                     Message::Suspend => {
                       self.should_suspend = true;
@@ -200,7 +215,25 @@ where
                         self.joinset.spawn(fut);
                       }
 
-                      self.draw(&mut app)?;
+                      let now = Instant::now();
+
+                      match now.checked_duration_since(last_render) {
+                        None => { last_render = now; }, // time went backwards?
+                        Some(since_last) if !render_pending => {
+                          if since_last >= time_between_frames {
+                            self.draw(&mut app)?;
+                            last_render = now;
+                          } else {
+                            let refresh_time = last_render + time_between_frames;
+                            render_pending = true;
+                            self.joinset.spawn(async move {
+                              tokio::time::sleep_until(refresh_time).await;
+                              Message::Refresh
+                            });
+                          }
+                        }
+                        _ => {} // render pending, do nothing
+                      }
                     }
                   }
                 } else {

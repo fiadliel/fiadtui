@@ -4,7 +4,9 @@ use fiadtui::{
     event::{Event, KeyCode, KeyEvent, KeyEventKind},
     App, EventLoop, Message,
 };
+use futures::executor::block_on;
 use ratatui::widgets::Paragraph;
+use tokio::task::spawn_blocking;
 
 #[derive(Debug)]
 enum CounterMessage {
@@ -87,8 +89,8 @@ async fn main() {
     let counter = CounterApp::default();
     let mut event_loop = EventLoop::new(stdout()).expect("Could not create event loop");
 
-    event_loop
-        .event_loop(counter)
+    spawn_blocking(move || block_on(event_loop.event_loop(counter, 60)))
         .await
-        .expect("Error while running event loop");
+        .expect("Could not spawn event loop")
+        .expect("Error during event loop");
 }

@@ -28,5 +28,5 @@ any existing update is pending.
 [Link](examples/delayed_counter.rs)
 
 ```bash
-cargo run --example delayed_counter --features="tokio/time"
+cargo run --example delayed_counter
 ```
