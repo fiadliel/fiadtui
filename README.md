@@ -5,6 +5,15 @@
 
 Simple TUI wrapper for ratatui with tokio and crossterm.
 
+## Features
+
+- Maps low level events to application-level messages.
+- Handles `^C` (quit), `^R` (refresh), `^Z` (suspend), leaves all other events to the user to configure.
+- Message handlers may optionally return a future that outputs an application message. If so, this is run and handled by the event loop.
+- Refresh rate is configured when the event loop starts. The refresh rate setting only modifies the drawing rate, not other event handling.
+- An MPSC channel may be passed in when creating the event loop, allowing external events to be injected.
+- Otherwise, the `draw()` function leaves organisation of how the frame is drawn to the user.
+
 ## Example usage
 
 ### Counter application
